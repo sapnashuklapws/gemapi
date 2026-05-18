@@ -156,7 +156,7 @@ if location_data and location_data.get('latitude') is not None:
                 # Prompt Engineering: We force Gemini to output a strict answer structure.
                 # Starting with 'YES' or 'NO' makes it easy for our Python code to parse.
                 prompt = (
-                    "Look closely at this image. Is there a clear bottle, steel? "
+                    "Look closely at this image. Is there a bottle? "
                     "Answer strictly with either 'YES' or 'NO' as your first word. "
                     "Follow that with a short description explaining what you see."
                 )
