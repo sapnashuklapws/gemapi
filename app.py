@@ -45,51 +45,35 @@ model = genai.GenerativeModel('gemini-2.5-flash')  # We use 2.5-flash because it
 # 3. EXIF METADATA INJECTION HELPERS
 # ==========================================
 def change_to_rational(number):
-    """
-    EXIF data (the hidden metadata inside JPEG files) doesn't store coordinates as standard 
-    decimals like 40.7128. Instead, it expects them in a math format called 'Rationals' 
-    broken into (Degrees, Minutes, Seconds). This function converts decimals into that format.
-    """
+    """Convert decimal degrees to flat floating-point components."""
     deg = int(number)
     min_float = (number - deg) * 60
     minute = int(min_float)
     sec = round((min_float - minute) * 60, 4)
-    # Returns the data in a nested tuple format required by the official EXIF standard
-    return ((deg, 1), (minute, 1), (int(sec * 10000), 10000))
+    # Return a clean list of floats/ints instead of nested tuples
+    return [float(deg), float(minute), float(sec)]
 
 def add_geotag_to_image(image_buffer, lat, lon):
-    """
-    When you take a photo on a web app, the browser strips away location data for privacy.
-    This function acts like a digital stamp, manually injecting the browser's GPS coordinates 
-    back into the image file's metadata headers so the image becomes permanently 'Geo-Tagged'.
-    """
-    img = Image.open(image_buffer)  # Open the raw camera photo stream using Pillow
+    """Manually injects GPS coordinates directly into an image's EXIF matrix block."""
+    img = Image.open(image_buffer)
     
     gps_info = {}
-    # Determine direction flags ('N' for North of the equator, 'S' for South, etc.)
     lat_ref = 'N' if lat >= 0 else 'S'
     lon_ref = 'E' if lon >= 0 else 'W'
     
-    # Standard EXIF GPS Tags use numbers as IDs:
-    # 1 = Latitude Reference, 2 = Latitude Value, 3 = Longitude Reference, 4 = Longitude Value
+    # Passing the flat lists allows Pillow's internal code to map things correctly
     gps_info[1] = lat_ref
     gps_info[2] = change_to_rational(abs(lat))
     gps_info[3] = lon_ref
     gps_info[4] = change_to_rational(abs(lon))
     
-    # Grab any existing metadata from the image
     exif = img.getexif()
-    # Tag ID 0x8825 is the official global ID reserved for GPS Information in images. 
-    # We overwrite it with our custom GPS data dictionary.
     exif[0x8825] = gps_info
     
-    # Instead of saving the file onto your hard drive, we save it directly inside RAM memory
-    # using BytesIO. This makes the web application much faster.
     output_buffer = io.BytesIO()
     img.save(output_buffer, format="JPEG", exif=exif)
-    output_buffer.seek(0)  # Reset the pointer to the beginning of the image data file
+    output_buffer.seek(0)
     return output_buffer
-
 # ==========================================
 # 4. AUTOMATED EMAIL DISPATCHER
 # ==========================================
